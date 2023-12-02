@@ -54,7 +54,7 @@ fn part1(input: &str) -> u32 {
 
 type CubeCount = HashMap<String, u32>;
 
-fn block_update(input: &str, cubes_needed: &mut CubeCount) {
+fn update_cube_count(input: &str, cubes_needed: &mut CubeCount) {
     if let Some((amount, color)) = input.split_whitespace().collect_tuple() {
         let amount = amount.parse().unwrap();
         cubes_needed
@@ -72,7 +72,7 @@ fn part2(input: &str) -> u32 {
         let mut blocks: HashMap<String, u32> = HashMap::new();
         if let Some((_, record)) = line.split(": ").collect_tuple() {
             for cube_draw in record.split("; ").flat_map(|s| s.split(", ")) {
-                block_update(cube_draw, &mut blocks)
+                update_cube_count(cube_draw, &mut blocks)
             }
         }
         acc += blocks.values().product::<u32>()
