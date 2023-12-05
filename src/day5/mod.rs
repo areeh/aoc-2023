@@ -150,16 +150,14 @@ fn part2(input: &str) -> i64 {
         maps.push(lines.map(parse_map).collect_vec())
     }
 
-    let mut seeds_processing: Vec<Range<i64>>;
-    let mut seeds_transferred: Vec<Range<i64>>;
+    let mut seeds_transferred: Vec<Range<i64>> = vec![];
+    let mut seeds_processing: Vec<Range<i64>> = vec![];
 
     for map in &maps {
-        seeds_transferred = Vec::new();
-        seeds_processing = seeds.clone();
+        seeds.append(&mut seeds_transferred);
         for map_range in map {
-            let seeds = seeds_processing.clone();
-            seeds_processing.clear();
-            for seed in seeds {
+            seeds.append(&mut seeds_processing);
+            while let Some(seed) = seeds.pop() {
                 let (maybe_intersection, mut remainder) =
                     separate_intersection(seed.clone(), &map_range.range);
                 if let Some(intersection) = maybe_intersection {
@@ -171,10 +169,10 @@ fn part2(input: &str) -> i64 {
             }
         }
         seeds_transferred.append(&mut seeds_processing);
-        seeds = seeds_transferred;
+        dbg!(&seeds_transferred);
     }
 
-    seeds.iter().map(|v| v.start).min().unwrap()
+    seeds_transferred.iter().map(|v| v.start).min().unwrap()
 }
 
 pub fn main() -> std::io::Result<()> {
