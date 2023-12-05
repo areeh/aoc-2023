@@ -169,7 +169,6 @@ fn part2(input: &str) -> i64 {
             }
         }
         seeds_transferred.append(&mut seeds_processing);
-        dbg!(&seeds_transferred);
     }
 
     seeds_transferred.iter().map(|v| v.start).min().unwrap()
