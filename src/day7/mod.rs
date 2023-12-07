@@ -2,8 +2,7 @@ extern crate test;
 
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::fmt;
-use std::str::FromStr;
+use std::hash::Hash;
 
 use crate::day7::HandType::{FiveKind, FourKind, FullHouse, HighCard, OnePair, ThreeKind, TwoPair};
 #[cfg(test)]
@@ -16,63 +15,43 @@ struct Card {
     value: u8,
 }
 
+struct CardMap {
+    map: HashMap<char, u8>,
+    inv: HashMap<u8, char>,
+}
+
+impl CardMap {
+    fn from_string(cards: &str) -> Self {
+        let inv = cards
+            .chars()
+            .enumerate()
+            .map(|(v, c)| (v as u8, c))
+            .collect();
+        let map = cards
+            .chars()
+            .enumerate()
+            .map(|(v, c)| (c, v as u8))
+            .collect();
+
+        CardMap { map, inv }
+    }
+}
+
 impl Card {
     fn new(value: u8) -> Self {
         Card { value }
     }
 
-    fn from_char(c: char) -> Option<Self> {
-        let value = match c {
-            'A' => 14,
-            'K' => 13,
-            'Q' => 12,
-            'J' => 11,
-            'T' => 10,
-            '2'..='9' => c.to_digit(10).unwrap() as u8,
-            _ => return None,
-        };
-        Some(Card { value })
+    fn from_char_map(c: char, card_map: &CardMap) -> Self {
+        Card::new(card_map.map[&c])
     }
 
-    fn from_char_p2(c: char) -> Option<Self> {
-        let value = match c {
-            'A' => 14,
-            'K' => 13,
-            'Q' => 12,
-            'J' => 1,
-            'T' => 10,
-            '2'..='9' => c.to_digit(10).unwrap() as u8,
-            _ => return None,
-        };
-        Some(Card { value })
-    }
-
-    fn to_char(self) -> char {
-        match self.value {
-            14 => 'A',
-            13 => 'K',
-            12 => 'Q',
-            11 => 'J',
-            10 => 'T',
-            n if (2u8..=9).contains(&n) => std::char::from_digit(n as u32, 10).unwrap(),
-            _ => panic!("Unexpected value {0}", self.value),
-        }
-    }
-
-    fn to_char_p2(self) -> char {
-        match self.value {
-            14 => 'A',
-            13 => 'K',
-            12 => 'Q',
-            1 => 'J',
-            10 => 'T',
-            n if (2u8..=9).contains(&n) => std::char::from_digit(n as u32, 10).unwrap(),
-            _ => panic!("Unexpected value {0}", self.value),
-        }
+    fn to_char_map(self, card_map: &CardMap) -> char {
+        card_map.inv[&self.value]
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Clone)]
 enum HandType {
     HighCard,
     OnePair,
@@ -135,32 +114,10 @@ impl HandType {
     }
 }
 
-#[derive(Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 struct Hand {
     typ: HandType,
     cards: [Card; 5],
-}
-
-impl fmt::Debug for Hand {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let card_chars: String = self.cards.iter().map(|card| card.to_char()).collect();
-
-        write!(f, "Hand: {0} type {1:?}", card_chars, self.typ)
-    }
-}
-
-impl FromStr for Hand {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let cards: [Card; 5] = s
-            .chars()
-            .map(|c| Card::from_char(c).ok_or("Got None card for {c}"))
-            .collect::<Result<Vec<Card>, &str>>()
-            .unwrap()
-            .try_into()
-            .unwrap();
-        Ok(Hand::from_cards(cards))
-    }
 }
 
 impl Hand {
@@ -180,67 +137,68 @@ impl Hand {
         Hand::new(typ, cards)
     }
 
-    fn from_cards_p2(cards: [Card; 5]) -> Self {
-        let hand = Self::from_cards(cards);
-
-        let joker_count = cards.iter().filter(|card| card == &&Card::new(1)).count();
-        let kind = HandType::joker_upgrade(hand.typ, joker_count as u8);
-
-        Hand::new(kind, cards)
-    }
-
-    fn from_str_p2(s: &str) -> Self {
+    fn from_str_map(s: &str, card_map: &CardMap) -> Self {
         let cards: [Card; 5] = s
             .chars()
-            .map(|c| Card::from_char_p2(c).ok_or("Got None card for {c}"))
-            .collect::<Result<Vec<Card>, &str>>()
-            .unwrap()
+            .map(|c| Card::from_char_map(c, card_map))
+            .collect_vec()
             .try_into()
             .unwrap();
-        Hand::from_cards_p2(cards)
+        Hand::from_cards(cards)
     }
+
+    fn joker_count(&self) -> u8 {
+        // This is only true in p2, where J is 0
+        self.cards.iter().filter(|card| card.value == 0).count() as u8
+    }
+}
+
+fn parse_hands(input: &str, card_map: &CardMap) -> Vec<(Hand, u32)> {
+    input
+        .lines()
+        .map(|line| {
+            if let Some((hand, bid)) = line.split_whitespace().collect_tuple() {
+                (Hand::from_str_map(hand, card_map), bid.parse().unwrap())
+            } else {
+                panic!("bad hand")
+            }
+        })
+        .collect()
+}
+
+fn winnings(hands: &mut [(Hand, u32)]) -> usize {
+    hands.sort_by(|(hand_a, _), (hand_b, _)| hand_a.cmp(hand_b));
+
+    hands
+        .iter()
+        .enumerate()
+        .map(|(rank, (_, bid))| (rank + 1) * (*bid as usize))
+        .sum()
 }
 
 fn part1(input: &str) -> usize {
-    let mut hands: Vec<(Hand, u32)> = input
-        .lines()
-        .map(|line| {
-            if let Some((hand, bid)) = line.split_whitespace().collect_tuple() {
-                (hand.parse().unwrap(), bid.parse().unwrap())
-            } else {
-                panic!("bad hand")
-            }
-        })
-        .collect();
-
-    hands.sort_by(|(hand_a, _), (hand_b, _)| hand_a.cmp(hand_b));
-
-    hands
-        .iter()
-        .enumerate()
-        .map(|(rank, (_, bid))| (rank + 1) * (*bid as usize))
-        .sum()
+    let card_map = CardMap::from_string("23456789TJQKA");
+    let mut hands = parse_hands(input, &card_map);
+    winnings(&mut hands)
 }
 
 fn part2(input: &str) -> usize {
-    let mut hands: Vec<(Hand, u32)> = input
-        .lines()
-        .map(|line| {
-            if let Some((hand, bid)) = line.split_whitespace().collect_tuple() {
-                (Hand::from_str_p2(hand), bid.parse().unwrap())
-            } else {
-                panic!("bad hand")
-            }
+    let card_map = CardMap::from_string("J23456789TQKA");
+    let mut hands = parse_hands(input, &card_map);
+    hands = hands
+        .iter()
+        .map(|(hand, bid)| {
+            (
+                Hand::new(
+                    HandType::joker_upgrade(hand.typ.clone(), hand.joker_count()),
+                    hand.cards,
+                ),
+                *bid,
+            )
         })
         .collect();
 
-    hands.sort_by(|(hand_a, _), (hand_b, _)| hand_a.cmp(hand_b));
-
-    hands
-        .iter()
-        .enumerate()
-        .map(|(rank, (_, bid))| (rank + 1) * (*bid as usize))
-        .sum()
+    winnings(&mut hands)
 }
 
 pub fn main() -> std::io::Result<()> {
@@ -254,9 +212,11 @@ pub fn main() -> std::io::Result<()> {
 #[test]
 fn test_parse_hand() {
     let input = "32T3K 765";
+    let card_map = CardMap::from_string("23456789TJQKA");
+
     let (hand, bid): (Hand, u32) =
         if let Some((hand, bid)) = input.split_whitespace().collect_tuple() {
-            (hand.parse().unwrap(), bid.parse().unwrap())
+            (Hand::from_str_map(hand, &card_map), bid.parse().unwrap())
         } else {
             panic!("ohno")
         };
@@ -266,11 +226,11 @@ fn test_parse_hand() {
             Hand::new(
                 HandType::OnePair,
                 [
-                    Card::new(3),
-                    Card::new(2),
-                    Card::new(10),
-                    Card::new(3),
-                    Card::new(13)
+                    Card::new(1),
+                    Card::new(0),
+                    Card::new(8),
+                    Card::new(1),
+                    Card::new(11)
                 ]
             ),
             765
@@ -293,7 +253,7 @@ QQQJA 483";
 fn task() {
     let input = &read_input_to_string(7).unwrap();
     assert_eq!(part1(input), 253313241);
-    assert_eq!(part2(input), 1);
+    assert_eq!(part2(input), 253362743);
 }
 
 #[bench]
