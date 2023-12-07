@@ -92,9 +92,9 @@ impl HandType {
         }
     }
 
-    fn joker_upgrade(kind: HandType, joker_count: u8) -> HandType {
+    fn joker_upgrade(kind: &HandType, joker_count: u8) -> HandType {
         match (kind, joker_count) {
-            (kind, 0) => kind,
+            (kind, 0) => kind.clone(),
             (HighCard, 1) => OnePair,
             (OnePair, 1) => ThreeKind,
             (OnePair, 2) => ThreeKind,
@@ -108,7 +108,7 @@ impl HandType {
             (FourKind, 1) => FiveKind,
             (kind, count) => {
                 println!("No upgrade for {kind:?} with count {count}");
-                kind
+                kind.clone()
             }
         }
     }
@@ -185,18 +185,9 @@ fn part1(input: &str) -> usize {
 fn part2(input: &str) -> usize {
     let card_map = CardMap::from_string("J23456789TQKA");
     let mut hands = parse_hands(input, &card_map);
-    hands = hands
-        .iter()
-        .map(|(hand, bid)| {
-            (
-                Hand::new(
-                    HandType::joker_upgrade(hand.typ.clone(), hand.joker_count()),
-                    hand.cards,
-                ),
-                *bid,
-            )
-        })
-        .collect();
+    hands
+        .iter_mut()
+        .for_each(|(hand, _)| hand.typ = HandType::joker_upgrade(&hand.typ, hand.joker_count()));
 
     winnings(&mut hands)
 }
