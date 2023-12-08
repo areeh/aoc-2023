@@ -46,6 +46,7 @@ impl Card {
         Card::new(card_map.map[&c])
     }
 
+    #[allow(dead_code)]
     fn to_char_map(self, card_map: &CardMap) -> char {
         card_map.inv[&self.value]
     }
@@ -106,10 +107,7 @@ impl HandType {
             (FullHouse, 2) => FiveKind,
             (FourKind, 4) => FiveKind,
             (FourKind, 1) => FiveKind,
-            (kind, count) => {
-                println!("No upgrade for {kind:?} with count {count}");
-                kind.clone()
-            }
+            _ => kind.clone(),
         }
     }
 }

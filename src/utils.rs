@@ -7,6 +7,7 @@ pub(crate) fn read_input_to_string(day: u32) -> std::io::Result<String> {
     fs::read_to_string(format!("./src/day{day}/input.txt"))
 }
 
+#[allow(dead_code)]
 pub(crate) fn pretty_print(arr: &Array2<char>) -> String {
     let mut result = String::new();
     for row in arr.rows() {
@@ -19,6 +20,7 @@ pub(crate) fn pretty_print(arr: &Array2<char>) -> String {
     result.trim_end().to_owned()
 }
 
+#[allow(dead_code)]
 /// See: https://github.com/rust-ndarray/ndarray/issues/866
 pub(crate) fn rot90<S>(arr: &mut ArrayBase<S, Ix2>)
 where
@@ -28,6 +30,7 @@ where
     arr.invert_axis(Axis(0));
 }
 
+#[allow(dead_code)]
 pub(crate) fn has_unique_elements<T>(iter: T) -> bool
 where
     T: IntoIterator,

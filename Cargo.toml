@@ -12,3 +12,4 @@ circular-buffer = "0.1.6"
 curl = "0.4.44"
 itertools = { version = "0.12.0", features = [] }
 ndarray = "0.15.6"
+num-integer = "0.1.45"
