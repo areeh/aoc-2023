@@ -15,7 +15,7 @@ where
 }
 
 fn predict_next(seq: Vec<i64>) -> i64 {
-    let mut history = vec![seq.clone()];
+    let mut history = vec![seq];
     while !(history.last().unwrap().iter().all(|v| v == &0)) {
         let next = diff(history.last().unwrap().clone().into_iter()).collect_vec();
         history.push(next);
