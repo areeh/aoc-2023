@@ -10,6 +10,7 @@ mod day5;
 mod day6;
 mod day7;
 mod day8;
+mod day9;
 mod utils;
 
 use std::fs::File;
@@ -113,6 +114,7 @@ fn main() -> Result<()> {
     day6::main()?;
     day7::main()?;
     day8::main()?;
+    day9::main()?;
 
     Ok(())
 }
