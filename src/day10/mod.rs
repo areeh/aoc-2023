@@ -431,7 +431,7 @@ fn part2(input: &str) -> usize {
 }
 
 pub fn main() -> std::io::Result<()> {
-    let input = &read_input_to_string(5)?;
+    let input = &read_input_to_string(10)?;
     dbg!(part1(input));
     dbg!(part2(input));
 
