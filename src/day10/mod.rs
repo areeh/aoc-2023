@@ -48,11 +48,6 @@ impl Position {
     fn to_index(self) -> [usize; 2] {
         [self.y, self.x]
     }
-
-    fn manhattan(&self, other: &Self) -> usize {
-        ((self.x as isize - other.x as isize).abs() + (self.y as isize - other.y as isize).abs())
-            as usize
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -325,7 +320,7 @@ fn part2(input: &str) -> usize {
     let start_pos = to_2d_pos(input.find(|v| v == 'S').unwrap(), lines[0].len());
     let board = parse_board(input);
 
-    let mut moves: Vec<(Position, Direction)> = DIRS
+    let moves: Vec<(Position, Direction)> = DIRS
         .into_iter()
         .filter_map(|dir| {
             if (start_pos.x == 0 && dir == Direction::Left)
@@ -413,14 +408,15 @@ fn part2(input: &str) -> usize {
         .indexed_iter()
         .filter_map(|(pos, c)| {
             if *c == '.'
-                && DIRS.into_iter().any(|dir| {
-                    is_inside(
+                && is_inside(
+                    Position::new(pos.1, pos.0),
+                    &board,
+                    Position::new(board.dim().1, board.dim().0),
+                    direction_to_nearest_edge(
                         Position::new(pos.1, pos.0),
-                        &board,
                         Position::new(board.dim().1, board.dim().0),
-                        dir,
-                    )
-                })
+                    ),
+                )
             {
                 Some(Position::new(pos.1, pos.0))
             } else {
@@ -429,7 +425,7 @@ fn part2(input: &str) -> usize {
         })
         .collect_vec();
 
-    println!("{}", visualize(&board, &inside_positions));
+    // println!("{}", visualize(&board, &inside_positions));
 
     inside_positions.len()
 }
@@ -510,7 +506,7 @@ L7JLJL-JLJLJL--JLJ.L";
 fn task() {
     let input = &read_input_to_string(10).unwrap();
     assert_eq!(part1(input), 6815);
-    assert_eq!(part2(input), 6815);
+    assert_eq!(part2(input), 269);
 }
 
 #[bench]
