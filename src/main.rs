@@ -5,6 +5,7 @@ extern crate core;
 mod day1;
 mod day10;
 mod day11;
+mod day12;
 mod day2;
 mod day3;
 mod day4;
@@ -13,7 +14,7 @@ mod day6;
 mod day7;
 mod day8;
 mod day9;
-mod t autils;
+mod utils;
 
 use std::fs::File;
 use std::io::{ErrorKind, Write};
@@ -119,6 +120,7 @@ fn main() -> Result<()> {
     day9::main()?;
     day10::main()?;
     day11::main()?;
+    day12::main()?;
 
     Ok(())
 }
