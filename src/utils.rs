@@ -31,6 +31,16 @@ where
 }
 
 #[allow(dead_code)]
+/// See: https://github.com/rust-ndarray/ndarray/issues/866
+pub(crate) fn rot270<S>(arr: &mut ArrayBase<S, Ix2>)
+where
+    S: RawData,
+{
+    arr.swap_axes(0, 1);
+    arr.invert_axis(Axis(1));
+}
+
+#[allow(dead_code)]
 pub(crate) fn has_unique_elements<T>(iter: T) -> bool
 where
     T: IntoIterator,
