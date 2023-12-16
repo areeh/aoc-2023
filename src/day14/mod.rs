@@ -1,12 +1,15 @@
 extern crate test;
 
-use itertools::Itertools;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 
+use ahash::AHasher;
 use ndarray::{s, Array1, Array2, ArrayView1, ArrayView2, Axis};
 #[cfg(test)]
 use test::Bencher;
 
-use crate::utils::{read_input_to_string, rot270};
+use crate::utils::{parse_board, read_input_to_string, rot270};
 
 type Board = Array2<char>;
 
@@ -27,24 +30,7 @@ fn pretty_print(arr: &ArrayView2<char>) {
     println!("{}", pretty_string(arr));
 }
 
-fn parse_board(input: &str) -> Board {
-    let board_width = input.lines().next().unwrap().len();
-
-    let mut data = Vec::new();
-    for line in input.lines() {
-        let mut row: Vec<_> = line.trim().chars().collect_vec();
-        data.append(&mut row);
-    }
-
-    let data_len = data.len();
-    let n_rows = data_len / board_width;
-
-    Array2::from_shape_vec((n_rows, board_width), data).unwrap()
-}
-
 fn slide(arr: &ArrayView1<char>) -> Array1<char> {
-    // dbg!(&arr.iter().collect::<String>());
-    // println!();
     let mut arr = arr.to_owned();
     arr.invert_axis(Axis(0));
     let (pos, _, _) =
@@ -66,18 +52,8 @@ fn slide(arr: &ArrayView1<char>) -> Array1<char> {
                 }
                 ret
             });
-    // dbg!(&pos);
     let mut out_arr = arr.into_owned();
     for (count_rock, count_open, end) in pos {
-        assert!(count_open >= count_rock);
-        assert_eq!(
-            out_arr
-                .slice(s![end - count_open..end])
-                .iter()
-                .filter(|c| **c == '#')
-                .count(),
-            0
-        );
         out_arr.slice_mut(s![end - count_open..end]).fill('.');
         out_arr.slice_mut(s![end - count_rock..end]).fill('O');
     }
@@ -112,34 +88,40 @@ fn spin_board(board: &mut Board) {
     }
 }
 
+fn array_key(arr: &ArrayView2<char>) -> u64 {
+    let mut hasher = AHasher::default();
+    arr.iter().collect::<String>().hash(&mut hasher);
+    hasher.finish()
+}
+
 fn part2(input: &str) -> usize {
-    let cycles = 1000000000;
+    let num_spins = 1000000000;
     let mut board = parse_board(input);
     let mut initial_board = board.to_owned();
 
-    let mut store_board = None;
-    let mut stored_matches = vec![];
-    for cycle in 0..1000 {
-        if cycle == 100 {
-            store_board = Some(board.to_owned());
-        }
+    let mut seen: HashMap<u64, usize> = HashMap::new();
+
+    let (mut cycle_start, mut cycle_len) = (None, None);
+    for cycle in 0..num_spins {
         spin_board(&mut board);
 
-        if let Some(ref b) = store_board {
-            if board == b {
-                stored_matches.push(cycle);
-            }
+        let key = array_key(&board.view());
+        if let Entry::Vacant(e) = seen.entry(key) {
+            e.insert(cycle);
+        } else {
+            (cycle_start, cycle_len) = (Some(seen[&key]), Some(cycle - seen[&key]));
+            break;
         }
     }
-    let cycle_length = stored_matches[1] - stored_matches[0];
-    let cycle_pos = (cycles - stored_matches[0]) % cycle_length;
-    let cycle_return = cycle_pos + stored_matches[0];
+
+    let (cycle_start, cycle_len) = (cycle_start.unwrap(), cycle_len.unwrap());
+    let cycle_pos = (num_spins - cycle_start) % cycle_len;
+    let cycle_return = cycle_pos + cycle_start;
 
     for _ in 0..cycle_return {
         spin_board(&mut initial_board);
     }
-    dbg!(cycle_pos);
-    // pretty_print(&board.view());
+
     load(&initial_board)
 }
 

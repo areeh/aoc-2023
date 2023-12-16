@@ -7,24 +7,9 @@ use ndarray::{Array2, Axis, Dim};
 #[cfg(test)]
 use test::Bencher;
 
-use crate::utils::read_input_to_string;
+use crate::utils::{parse_board, read_input_to_string};
 
 type Board = Array2<char>;
-
-fn parse_board(input: &str) -> Array2<char> {
-    let board_width = input.lines().next().unwrap().len();
-
-    let mut data = Vec::new();
-    for line in input.lines() {
-        let mut row: Vec<_> = line.trim().chars().collect_vec();
-        data.append(&mut row);
-    }
-
-    let data_len = data.len();
-    let n_rows = data_len / board_width;
-
-    Array2::from_shape_vec((n_rows, board_width), data).unwrap()
-}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct Position {

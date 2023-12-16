@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::hash::Hash;
 use std::{collections::HashSet, fs};
 
@@ -48,4 +49,19 @@ where
 {
     let mut uniq = HashSet::new();
     iter.into_iter().all(move |x| uniq.insert(x))
+}
+
+pub(crate) fn parse_board(input: &str) -> Array2<char> {
+    let board_width = input.lines().next().unwrap().len();
+
+    let mut data = Vec::new();
+    for line in input.lines() {
+        let mut row: Vec<_> = line.trim().chars().collect_vec();
+        data.append(&mut row);
+    }
+
+    let data_len = data.len();
+    let n_rows = data_len / board_width;
+
+    Array2::from_shape_vec((n_rows, board_width), data).unwrap()
 }

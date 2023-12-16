@@ -1,12 +1,11 @@
 extern crate test;
 
 use itertools::Itertools;
-
-use ndarray::{s, Array2, ArrayView2, Zip};
+use ndarray::{s, ArrayView2, Zip};
 #[cfg(test)]
 use test::Bencher;
 
-use crate::utils::read_input_to_string;
+use crate::utils::{parse_board, read_input_to_string};
 
 #[allow(dead_code)]
 fn pretty_string(arr: &ArrayView2<char>) -> String {
@@ -23,21 +22,6 @@ fn pretty_string(arr: &ArrayView2<char>) -> String {
 #[allow(dead_code)]
 fn pretty_print(arr: &ArrayView2<char>) {
     println!("{}", pretty_string(arr));
-}
-
-fn parse_board(input: &str) -> Array2<char> {
-    let board_width = input.lines().next().unwrap().len();
-
-    let mut data = Vec::new();
-    for line in input.lines() {
-        let mut row: Vec<_> = line.trim().chars().collect_vec();
-        data.append(&mut row);
-    }
-
-    let data_len = data.len();
-    let n_rows = data_len / board_width;
-
-    Array2::from_shape_vec((n_rows, board_width), data).unwrap()
 }
 
 fn find_mirror(board: &ArrayView2<char>, diff_count: usize) -> usize {
