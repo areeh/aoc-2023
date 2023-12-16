@@ -135,7 +135,7 @@ fn example() {
 }
 
 #[test]
-fn test_lens_op() {
+fn test_lens_op_parse() {
     assert_eq!("fszj=6".parse::<Op>(), Ok(Op::Eq("fszj".into(), 6)));
     assert_eq!("fszj-".parse::<Op>(), Ok(Op::Sub("fszj".into())));
 }
