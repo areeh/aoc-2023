@@ -1,5 +1,6 @@
 extern crate test;
 
+use std::collections::hash_map::Entry;
 use std::str::FromStr;
 #[cfg(test)]
 use test::Bencher;
@@ -19,8 +20,7 @@ fn part1(input: &str) -> usize {
     input.trim().split(',').map(capital_hash).sum()
 }
 
-type Box = Vec<(String, u8)>;
-type Boxes = [Box];
+type Boxes = [MapWithInsertionOrder];
 
 fn focusing_power(boxes: &Boxes) -> impl Iterator<Item = usize> + '_ {
     boxes
@@ -28,10 +28,10 @@ fn focusing_power(boxes: &Boxes) -> impl Iterator<Item = usize> + '_ {
         .enumerate()
         .flat_map(move |(box_number, lens_box)| {
             lens_box
-                .iter()
+                .iterate()
                 .enumerate()
-                .map(move |(slot_number, (_, focal_length))| {
-                    (box_number + 1) * (slot_number + 1) * *focal_length as usize
+                .map(move |(slot_number, focal_length)| {
+                    (box_number + 1) * (slot_number + 1) * focal_length as usize
                 })
         })
 }
@@ -61,23 +61,61 @@ impl FromStr for Op {
     }
 }
 
+use std::collections::HashMap;
+
+struct MapWithInsertionOrder {
+    map: HashMap<String, (u8, usize)>,
+    insertion_count: usize,
+}
+
+impl MapWithInsertionOrder {
+    fn new() -> Self {
+        MapWithInsertionOrder {
+            map: HashMap::new(),
+            insertion_count: 0,
+        }
+    }
+
+    #[allow(dead_code)]
+    fn from_vec(vec: Vec<(String, u8)>) -> Self {
+        let mut structure = MapWithInsertionOrder::new();
+        for (label, focal) in vec {
+            structure.insert_or_swap(label, focal);
+        }
+        structure
+    }
+
+    fn insert_or_swap(&mut self, label: String, focal: u8) {
+        match self.map.entry(label) {
+            Entry::Vacant(e) => {
+                self.insertion_count += 1;
+                e.insert((focal, self.insertion_count));
+            }
+            Entry::Occupied(mut e) => {
+                e.insert((focal, e.get().1));
+            }
+        }
+    }
+
+    fn delete(&mut self, label: &str) {
+        self.map.remove(label);
+    }
+
+    fn iterate(&self) -> impl Iterator<Item = u8> {
+        let mut values: Vec<(u8, usize)> = self.map.clone().into_values().collect();
+        values.sort_by_key(|&(_, count)| count);
+        values.into_iter().map(|(focal, _)| focal)
+    }
+}
+
 fn remove_from_boxes(label: String, boxes: &mut Boxes) {
     let lens_box = &mut boxes[capital_hash(&label)];
-
-    if let Some(pos) = lens_box.iter().position(|(l, _)| *l == label) {
-        lens_box.remove(pos);
-    }
+    lens_box.delete(&label)
 }
 
 fn add_to_boxes(label: String, focal: u8, boxes: &mut Boxes) {
     let lens_box = &mut boxes[capital_hash(&label)];
-
-    match lens_box.iter().position(|(l, _)| *l == label) {
-        Some(pos) => {
-            lens_box[pos].1 = focal;
-        }
-        None => lens_box.push((label.to_string(), focal)),
-    }
+    lens_box.insert_or_swap(label, focal)
 }
 
 fn part2(input: &str) -> usize {
@@ -87,7 +125,8 @@ fn part2(input: &str) -> usize {
         .map(str::parse)
         .collect::<Result<_, _>>()
         .unwrap();
-    let mut boxes: [Box; 256] = std::array::from_fn(|_| vec![]);
+    let mut boxes: [MapWithInsertionOrder; 256] =
+        std::array::from_fn(|_| MapWithInsertionOrder::new());
 
     for op in lens_ops {
         match op {
@@ -115,14 +154,15 @@ fn example_hash() {
 
 #[test]
 fn test_focusing_power() {
+    let input = [
+        MapWithInsertionOrder::from_vec(vec![("rn".into(), 1), ("cm".into(), 2)]),
+        MapWithInsertionOrder::from_vec(vec![]),
+        MapWithInsertionOrder::from_vec(vec![]),
+        MapWithInsertionOrder::from_vec(vec![("ot".into(), 7), ("ab".into(), 5), ("pc".into(), 6)]),
+    ];
+
     assert_eq!(
-        focusing_power(&[
-            vec![("rn".into(), 1), ("cm".into(), 2)],
-            vec![],
-            vec![],
-            vec![("ot".into(), 7), ("ab".into(), 5), ("pc".into(), 6)]
-        ])
-        .collect::<Vec<usize>>(),
+        focusing_power(&input).collect::<Vec<usize>>(),
         [1, 4, 28, 40, 72]
     )
 }
