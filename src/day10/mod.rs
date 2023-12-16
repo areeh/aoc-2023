@@ -8,7 +8,7 @@ use ndarray::Array2;
 #[cfg(test)]
 use test::Bencher;
 
-use crate::utils::{parse_board, pretty_print, read_input_to_string};
+use crate::utils::{parse_board, pretty_string, read_input_to_string};
 
 const DIRS: [Direction; 4] = [
     Direction::Up,
@@ -182,7 +182,7 @@ fn visualize(board: &Board, inside: &[Position]) -> String {
     for pos in inside {
         board[pos.to_index()] = 'I'
     }
-    pretty_print(&board)
+    pretty_string(&board.view())
 }
 
 fn part1(input: &str) -> usize {

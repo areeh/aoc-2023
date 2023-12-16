@@ -2,14 +2,14 @@ use itertools::Itertools;
 use std::hash::Hash;
 use std::{collections::HashSet, fs};
 
-use ndarray::{Array2, ArrayBase, Axis, Ix2, RawData};
+use ndarray::{Array2, ArrayBase, ArrayView2, Axis, Ix2, RawData};
 
 pub(crate) fn read_input_to_string(day: u32) -> std::io::Result<String> {
     fs::read_to_string(format!("./src/day{day}/input.txt"))
 }
 
 #[allow(dead_code)]
-pub(crate) fn pretty_print(arr: &Array2<char>) -> String {
+pub(crate) fn pretty_string(arr: &ArrayView2<char>) -> String {
     let mut result = String::new();
     for row in arr.rows() {
         for elem in row {
@@ -19,6 +19,10 @@ pub(crate) fn pretty_print(arr: &Array2<char>) -> String {
     }
 
     result.trim_end().to_owned()
+}
+#[allow(dead_code)]
+pub(crate) fn pretty_print(arr: &ArrayView2<char>) {
+    println!("{}", pretty_string(arr));
 }
 
 #[allow(dead_code)]
