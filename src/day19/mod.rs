@@ -477,7 +477,7 @@ hdj{m>838:A,pv}
 {x=2036,m=264,a=79,s=2244}
 {x=2461,m=1339,a=466,s=291}
 {x=2127,m=1623,a=2188,s=1013}";
-    // assert_eq!(part1(input), 19114);
+    assert_eq!(part1(input), 19114);
     assert_eq!(part2(input), 167409079868000);
 }
 
