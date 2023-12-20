@@ -14,6 +14,7 @@ mod day17;
 mod day18;
 mod day19;
 mod day2;
+mod day20;
 mod day3;
 mod day4;
 mod day5;
@@ -22,7 +23,6 @@ mod day7;
 mod day8;
 mod day9;
 mod utils;
-mod day20;
 
 use std::fs::File;
 use std::io::{ErrorKind, Write};

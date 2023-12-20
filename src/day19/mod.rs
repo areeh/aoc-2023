@@ -2,10 +2,9 @@ extern crate test;
 
 use itertools::Itertools;
 use std::collections::{HashMap, VecDeque};
+use std::error::Error;
 use std::fmt;
-use std::num::ParseIntError;
 use std::ops::RangeInclusive;
-use std::str::FromStr;
 
 use petgraph::algo::is_cyclic_directed;
 use petgraph::graph::{DiGraph, NodeIndex};
@@ -13,82 +12,146 @@ use petgraph::graph::{DiGraph, NodeIndex};
 use test::Bencher;
 
 use crate::utils::read_input_to_string;
-
-#[derive(Debug, Clone)]
-struct Part {
-    x: u32,
-    m: u32,
-    a: u32,
-    s: u32,
-}
-
-impl Part {
-    fn sum(&self) -> usize {
-        (self.x + self.m + self.a + self.s) as usize
-    }
-}
-
-#[derive(Debug)]
-enum ParsePartError {
-    MissingField(&'static str),
-    ParseIntError(ParseIntError),
-}
-
-impl From<ParseIntError> for ParsePartError {
-    fn from(err: ParseIntError) -> Self {
-        ParsePartError::ParseIntError(err)
-    }
-}
-
-impl FromStr for Part {
-    type Err = ParsePartError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: HashMap<_, _> = s
-            .trim_matches(|c| c == '{' || c == '}')
-            .split(',')
-            .filter_map(|pair| {
-                let mut split = pair.split('=');
-                match (split.next(), split.next()) {
-                    (Some(key), Some(value)) => Some((key, value)),
-                    _ => None,
-                }
-            })
-            .collect();
-
-        Ok(Part {
-            x: parts
-                .get("x")
-                .ok_or(ParsePartError::MissingField("x"))?
-                .parse::<u32>()?,
-            m: parts
-                .get("m")
-                .ok_or(ParsePartError::MissingField("m"))?
-                .parse::<u32>()?,
-            a: parts
-                .get("a")
-                .ok_or(ParsePartError::MissingField("a"))?
-                .parse::<u32>()?,
-            s: parts
-                .get("s")
-                .ok_or(ParsePartError::MissingField("s"))?
-                .parse::<u32>()?,
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-struct Condition {
-    variable: char,
-    condition: char,
-    value: u32,
-}
+use std::num::ParseIntError;
+use std::str::FromStr;
 
 #[derive(Debug)]
 enum ParseConditionError {
     TooShort,
     InvalidFormat,
     InvalidNumber,
+}
+
+#[derive(Debug)]
+enum ParsePartError {
+    MissingField(String),
+    ParseIntError(String, ParseIntError),
+    InvalidFormat(String),
+}
+
+impl fmt::Display for Destination {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Destination::Workflow(s) => write!(f, "{}", s),
+            Destination::Terminal(true) => write!(f, "A"),
+            Destination::Terminal(false) => write!(f, "R"),
+        }
+    }
+}
+
+impl fmt::Display for ParseDestinationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid format")
+    }
+}
+
+impl From<(String, ParseIntError)> for ParsePartError {
+    fn from(err: (String, ParseIntError)) -> Self {
+        ParsePartError::ParseIntError(err.0, err.1)
+    }
+}
+
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Op::Greater => write!(f, ">"),
+            Op::Less => write!(f, "<"),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum ParseDestinationError {
+    InvalidFormat,
+}
+
+impl Error for ParseDestinationError {}
+
+#[derive(Debug, Clone)]
+struct Part {
+    x: usize,
+    m: usize,
+    a: usize,
+    s: usize,
+}
+
+impl Part {
+    fn sum(&self) -> usize {
+        self.x + self.m + self.a + self.s
+    }
+}
+
+impl FromStr for Part {
+    type Err = ParsePartError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        let mut x = None;
+        let mut m = None;
+        let mut a = None;
+        let mut s = None;
+
+        for pair in input.trim_matches(|c| c == '{' || c == '}').split(',') {
+            let mut split = pair.split('=');
+            match (split.next(), split.next()) {
+                (Some("x"), Some(value)) => {
+                    x = Some(value.parse().map_err(|e| ("x".to_string(), e))?)
+                }
+                (Some("m"), Some(value)) => {
+                    m = Some(value.parse().map_err(|e| ("m".to_string(), e))?)
+                }
+                (Some("a"), Some(value)) => {
+                    a = Some(value.parse().map_err(|e| ("a".to_string(), e))?)
+                }
+                (Some("s"), Some(value)) => {
+                    s = Some(value.parse().map_err(|e| ("s".to_string(), e))?)
+                }
+                (Some(field), _) => return Err(ParsePartError::InvalidFormat(field.to_string())),
+                _ => return Err(ParsePartError::InvalidFormat("Unknown format".to_string())),
+            }
+        }
+
+        Ok(Part {
+            x: x.ok_or_else(|| ParsePartError::MissingField("x".to_string()))?,
+            m: m.ok_or_else(|| ParsePartError::MissingField("m".to_string()))?,
+            a: a.ok_or_else(|| ParsePartError::MissingField("a".to_string()))?,
+            s: s.ok_or_else(|| ParsePartError::MissingField("s".to_string()))?,
+        })
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+enum Op {
+    Greater,
+    Less,
+}
+
+impl FromStr for Op {
+    type Err = Box<dyn Error>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            ">" => Ok(Op::Greater),
+            "<" => Ok(Op::Less),
+            _ => Err("Invalid operator".into()),
+        }
+    }
+}
+
+impl Op {
+    fn from_char(c: char) -> Option<Op> {
+        match c {
+            '>' => Some(Op::Greater),
+            '<' => Some(Op::Less),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Condition {
+    variable: char,
+    condition: Op,
+    value: usize,
 }
 
 impl FromStr for Condition {
@@ -108,9 +171,10 @@ impl FromStr for Condition {
             return Err(ParseConditionError::InvalidFormat);
         }
 
+        let condition = Op::from_char(condition).unwrap();
         let value_str = &s[2..];
         let value = value_str
-            .parse::<u32>()
+            .parse()
             .map_err(|_| ParseConditionError::InvalidNumber)?;
 
         Ok(Condition {
@@ -132,25 +196,50 @@ impl Condition {
         };
 
         match self.condition {
-            '>' => part_value > self.value,
-            '<' => part_value < self.value,
-            _ => panic!("bad condition {}", self.condition),
+            Op::Greater => part_value > self.value,
+            Op::Less => part_value < self.value,
         }
     }
 
     fn negate(&self) -> Self {
         match self.condition {
-            '>' => Self {
+            Op::Greater => Self {
                 variable: self.variable,
-                condition: '<',
+                condition: Op::Less,
                 value: self.value + 1,
             },
-            '<' => Self {
+            Op::Less => Self {
                 variable: self.variable,
-                condition: '>',
+                condition: Op::Greater,
                 value: self.value - 1,
             },
-            _ => panic!("bad condition {}", self.condition),
+        }
+    }
+}
+
+#[derive(Hash, Clone, Eq, PartialEq)]
+enum Destination {
+    Workflow(String),
+    Terminal(bool),
+}
+
+impl Destination {
+    fn start() -> Self {
+        Destination::Workflow("in".to_string())
+    }
+}
+
+impl FromStr for Destination {
+    type Err = ParseDestinationError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "A" => Ok(Destination::Terminal(true)),
+            "R" => Ok(Destination::Terminal(false)),
+            _ if s.chars().all(|c| c.is_ascii_lowercase()) => {
+                Ok(Destination::Workflow(s.to_string()))
+            }
+            _ => Err(ParseDestinationError::InvalidFormat),
         }
     }
 }
@@ -163,9 +252,10 @@ fn parse_condition(input: &str) -> (Condition, String) {
     }
 }
 
-type WorkflowItem = (Option<Condition>, String);
+type WorkflowItem = (Option<Condition>, Destination);
+type WorkflowMap = HashMap<Destination, Vec<WorkflowItem>>;
 
-fn parse_workflow(input: &str) -> (String, Vec<WorkflowItem>) {
+fn parse_workflow(input: &str) -> (Destination, Vec<WorkflowItem>) {
     if let Some((name, workflow_str)) = input.split('{').collect_tuple() {
         let workflow_str = &workflow_str[..workflow_str.len() - 1];
         let workflow_str = workflow_str.split(',').collect_vec();
@@ -173,21 +263,21 @@ fn parse_workflow(input: &str) -> (String, Vec<WorkflowItem>) {
             .iter()
             .map(|s| {
                 let (condition, destination) = parse_condition(s);
-                (Some(condition), destination)
+                (Some(condition), destination.parse().unwrap())
             })
             .collect_vec();
-        workflow.push((None, workflow_str.last().unwrap().to_string()));
+        workflow.push((None, workflow_str.last().unwrap().parse().unwrap()));
 
-        (name.to_owned(), workflow)
+        (name.parse().unwrap(), workflow)
     } else {
         panic!("bad workflow {input}")
     }
 }
 
-fn check_part(part: &Part, workflows: &HashMap<String, Vec<WorkflowItem>>) -> bool {
-    let mut destination = "in".to_owned();
+fn check_part(part: &Part, workflows: &WorkflowMap) -> bool {
+    let mut destination = Destination::start();
 
-    while destination != "R" && destination != "A" {
+    while let Destination::Workflow(_) = destination {
         let workflow = &workflows[&destination];
 
         for (cond, dest) in workflow.clone().into_iter() {
@@ -203,9 +293,8 @@ fn check_part(part: &Part, workflows: &HashMap<String, Vec<WorkflowItem>>) -> bo
         }
     }
 
-    match destination.as_str() {
-        "A" => true,
-        "R" => false,
+    match destination {
+        Destination::Terminal(accept) => accept,
         _ => panic!("Bad final destination {destination}"),
     }
 }
@@ -213,7 +302,7 @@ fn check_part(part: &Part, workflows: &HashMap<String, Vec<WorkflowItem>>) -> bo
 fn part1(input: &str) -> usize {
     let mut lines_iter = input.lines();
 
-    let workflows: HashMap<String, Vec<WorkflowItem>> = lines_iter
+    let workflows: WorkflowMap = lines_iter
         .by_ref()
         .take_while(|line| !line.is_empty())
         .map(parse_workflow)
@@ -258,7 +347,7 @@ impl fmt::Debug for Node {
 
 #[derive(Debug, Clone)]
 struct ValidRatings {
-    range: Option<RangeInclusive<u32>>,
+    range: Option<RangeInclusive<usize>>,
 }
 
 impl ValidRatings {
@@ -271,26 +360,25 @@ impl ValidRatings {
     fn apply_condition(&mut self, cond: Condition) {
         if let Some(range) = &mut self.range {
             match cond.condition {
-                '>' => {
+                Op::Greater => {
                     if *range.end() <= cond.value {
                         self.range = None;
                     } else {
                         *range = cond.value + 1..=*range.end();
                     }
                 }
-                '<' => {
+                Op::Less => {
                     if *range.start() >= cond.value {
                         self.range = None;
                     } else {
                         *range = *range.start()..=cond.value - 1;
                     }
                 }
-                _ => panic!("bad condition {cond:?}"),
             }
         }
     }
 
-    fn count(&self) -> u32 {
+    fn count(&self) -> usize {
         if let Some(range) = self.range.as_ref() {
             let (start, end) = (range.start(), range.end());
             if start <= end {
@@ -337,7 +425,7 @@ fn dfs(graph: &DiGraph<Node, bool>, current: NodeIndex, end: NodeIndex) -> Vec<V
 type OutgoingNode = Option<(NodeIndex<u32>, bool)>;
 
 fn part2(input: &str) -> usize {
-    let workflows: HashMap<String, Vec<WorkflowItem>> = input
+    let workflows: WorkflowMap = input
         .lines()
         .by_ref()
         .take_while(|line| !line.is_empty())
@@ -346,23 +434,21 @@ fn part2(input: &str) -> usize {
 
     let mut g = DiGraph::new();
 
-    let mut queue: VecDeque<(OutgoingNode, &str)> = VecDeque::new();
-    queue.push_back((None, "in"));
+    let mut queue: VecDeque<(OutgoingNode, Destination)> = VecDeque::new();
+    queue.push_back((None, Destination::Workflow("in".to_string())));
 
     let reject_idx = g.add_node(Node::Exit(false));
     let accept_idx = g.add_node(Node::Exit(true));
 
     while let Some((maybe_prev, node)) = queue.pop_front() {
-        if node == "A" {
-            if let Some((prev, edge_value)) = maybe_prev {
-                g.add_edge(prev, accept_idx, edge_value);
-            } else {
-                panic!("Hit accept without a previous node")
-            }
-            continue;
-        }
-        if node == "R" {
-            if let Some((prev, edge_value)) = maybe_prev {
+        if let Destination::Terminal(accept) = node {
+            if accept {
+                if let Some((prev, edge_value)) = maybe_prev {
+                    g.add_edge(prev, accept_idx, edge_value);
+                } else {
+                    panic!("Hit accept without a previous node")
+                }
+            } else if let Some((prev, edge_value)) = maybe_prev {
                 g.add_edge(prev, reject_idx, edge_value);
             } else {
                 panic!("Hit reject without a previous node")
@@ -371,7 +457,7 @@ fn part2(input: &str) -> usize {
         }
 
         let workflow = &workflows
-            .get(node)
+            .get(&node)
             .unwrap_or_else(|| panic!("Did not find node {node} in workflow map"));
 
         let mut maybe_prev = maybe_prev;
@@ -380,19 +466,19 @@ fn part2(input: &str) -> usize {
                 maybe_prev = if let Some((prev, edge_value)) = maybe_prev {
                     let current = g.add_node(Node::Cond(cond.clone()));
                     g.add_edge(prev, current, edge_value);
-                    queue.push_back((Some((current, true)), dest));
+                    queue.push_back((Some((current, true)), dest.clone()));
                     Some((current, false))
                 } else {
                     let current = g.add_node(Node::Cond(cond.clone()));
-                    queue.push_back((Some((current, true)), dest));
+                    queue.push_back((Some((current, true)), dest.clone()));
                     Some((current, false))
                 };
-            } else if dest.as_str() != "A" && dest.as_str() != "R" {
-                queue.push_back((maybe_prev, dest));
+            } else if let Destination::Workflow(_) = dest {
+                queue.push_back((maybe_prev, dest.clone()));
             } else {
-                let current = match dest.as_str() {
-                    "A" => accept_idx,
-                    "R" => reject_idx,
+                let current = match dest {
+                    Destination::Terminal(true) => accept_idx,
+                    Destination::Terminal(false) => reject_idx,
                     _ => unreachable!(),
                 };
                 if let Some((prev, edge_value)) = maybe_prev {
@@ -441,10 +527,7 @@ fn part2(input: &str) -> usize {
                 }
             }
         }
-        valid_ratings += rating_ranges
-            .map(|v| v.count() as usize)
-            .iter()
-            .product::<usize>();
+        valid_ratings += rating_ranges.map(|v| v.count()).iter().product::<usize>();
     }
 
     valid_ratings
