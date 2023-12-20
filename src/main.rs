@@ -22,6 +22,7 @@ mod day7;
 mod day8;
 mod day9;
 mod utils;
+mod day20;
 
 use std::fs::File;
 use std::io::{ErrorKind, Write};
@@ -135,6 +136,7 @@ fn main() -> Result<()> {
     day17::main()?;
     day18::main()?;
     day19::main()?;
+    day20::main()?;
 
     Ok(())
 }
