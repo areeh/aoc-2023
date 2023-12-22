@@ -135,8 +135,8 @@ fn main() -> Result<()> {
     day16::main()?;
     day17::main()?;
     day18::main()?;
-    day19::main()?;
     day20::main()?;
+    day19::main()?;
 
     Ok(())
 }
