@@ -420,7 +420,7 @@ fn example2() {
 fn task() {
     let input = &read_input_to_string(20).unwrap();
     assert_eq!(part1(input), 898731036);
-    assert_eq!(part2(input), 1);
+    assert_eq!(part2(input), 229414480926893);
 }
 
 #[bench]

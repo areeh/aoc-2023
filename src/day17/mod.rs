@@ -11,7 +11,7 @@ use test::Bencher;
 
 use crate::utils::read_input_to_string;
 
-pub(crate) fn parse_board(input: &str) -> Array2<u32> {
+fn parse_board(input: &str) -> Array2<u32> {
     let board_width = input.lines().next().unwrap().len();
 
     let mut data = Vec::new();
