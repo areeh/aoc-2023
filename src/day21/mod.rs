@@ -283,12 +283,7 @@ fn visualize(board: &Board, reached: &[Position]) {
 fn walled_board(board: &Board, starts: &[Position], steps: usize) -> usize {
     let mut board = pad(board, ROCK);
     let mut visited = HashSet::new();
-    bfs(
-        &mut board,
-        starts,
-        steps,
-        &mut visited,
-    )
+    bfs(&mut board, starts, steps, &mut visited)
 }
 
 fn part1(input: &str, steps: usize) -> usize {

@@ -7,7 +7,6 @@ use std::iter::once;
 use std::str::FromStr;
 
 use num_integer::gcd;
-use petgraph::dot::{Config, Dot};
 use petgraph::graph::{DiGraph, NodeIndex};
 #[cfg(test)]
 use test::Bencher;
