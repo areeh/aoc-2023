@@ -85,8 +85,7 @@ fn can_remove<N, E>(graph: &DiGraph<N, E>, node: NodeIndex) -> bool {
         .all(|n| graph.neighbors_directed(n, Direction::Outgoing).count() != 1)
 }
 
-fn count_predecessors_with_out_degree_one<N, E>(graph: &DiGraph<N, E>, node: NodeIndex) -> usize {
-    // let mut visited = HashSet::new();
+fn count_falling<N, E>(graph: &DiGraph<N, E>, node: NodeIndex) -> usize {
     let mut falling = HashSet::new();
     let mut stack = VecDeque::new();
     stack.push_back(node);
@@ -107,7 +106,7 @@ fn count_predecessors_with_out_degree_one<N, E>(graph: &DiGraph<N, E>, node: Nod
     falling.remove(&node);
     falling.len()
 }
-fn parts(input: &str) -> DiGraph<Block, bool> {
+fn create_rests_on_graph(input: &str) -> DiGraph<Block, bool> {
     let mut blocks: Vec<Block> = input
         .lines()
         .map(str::parse)
@@ -164,7 +163,7 @@ fn parts(input: &str) -> DiGraph<Block, bool> {
     g
 }
 fn part1(input: &str) -> usize {
-    let g = parts(input);
+    let g = create_rests_on_graph(input);
 
     g.node_indices()
         .filter(|node| can_remove(&g, *node))
@@ -172,11 +171,9 @@ fn part1(input: &str) -> usize {
 }
 
 fn part2(input: &str) -> usize {
-    let g = parts(input);
+    let g = create_rests_on_graph(input);
 
-    g.node_indices()
-        .map(|node| count_predecessors_with_out_degree_one(&g, node))
-        .sum()
+    g.node_indices().map(|node| count_falling(&g, node)).sum()
 }
 
 pub fn main() -> std::io::Result<()> {
