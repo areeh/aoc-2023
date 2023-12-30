@@ -162,7 +162,6 @@ fn part1(input: &str, bound: (f64, f64)) -> usize {
         .count()
 }
 
-
 pub fn main() -> std::io::Result<()> {
     let input = &read_input_to_string(24)?;
     dbg!(part1(input, TASK_BOUND),);
