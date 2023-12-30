@@ -202,7 +202,6 @@ fn visualize(board: &Board, path: &[Position]) {
     println!("{}", pretty_string(&board.view()));
 }
 
-
 fn path_length(path: &[NodeIndex], graph: &UnGraph<Position, usize>) -> usize {
     path.iter().tuple_windows().fold(0, |acc, (a, b)| {
         if let Some(edge) = graph.find_edge(*a, *b) {
@@ -236,7 +235,7 @@ fn longest_path(start: Position, goal: Position, board: &Board) -> usize {
         }
     }
 
-    println!("{:?}", Dot::with_config(&g, &[]));
+    // println!("{:?}", Dot::with_config(&g, &[]));
 
     all_simple_paths::<Vec<_>, _>(
         &g,
