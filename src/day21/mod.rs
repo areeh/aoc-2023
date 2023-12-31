@@ -142,13 +142,9 @@ fn compute_at_n(n: usize, deltas: &[usize], start: usize) -> usize {
     }
 }
 
-fn bfs(
-    board: &mut Array2<char>,
-    starts: &[Position],
-    moves: usize,
-    visited: &mut HashSet<Position>,
-) -> usize {
+fn bfs(board: &mut Array2<char>, starts: &[Position], record_steps: &[usize]) -> Vec<usize> {
     let board_dim = board.dim();
+    let mut visited = HashSet::new();
     let mut queue = VecDeque::new();
 
     let s_idx = board
@@ -161,8 +157,11 @@ fn bfs(
         queue.push_back(*start);
     }
 
-    let mut level_size = 1;
-    for _ in 1..moves + 1 {
+    let steps = record_steps.iter().max().unwrap();
+
+    let mut out = vec![];
+    let mut level_size;
+    for step in 1..steps + 1 {
         level_size = queue.len();
         visited.clear();
         for _ in 0..level_size {
@@ -178,95 +177,11 @@ fn bfs(
                 }
             }
         }
-    }
-    visited.len()
-}
-
-fn bfs_use_deltas(
-    board: &mut Array2<char>,
-    starts: &[Position],
-    moves: usize,
-    true_moves: usize,
-    visited: &mut HashSet<Position>,
-    p2: bool,
-) -> usize {
-    let board_dim = board.dim();
-    let true_moves_cycle = true_moves % board_dim.0;
-    let mut queue = VecDeque::new();
-
-    let s_idx = board
-        .indexed_iter()
-        .find_map(|(ix, c)| if *c == 'S' { Some(ix) } else { None })
-        .unwrap();
-    board[s_idx] = PLOT;
-
-    for start in starts {
-        queue.push_back(*start);
-    }
-
-    let mut counts_per_count_vec: HashMap<usize, Vec<(usize, usize)>> = HashMap::new();
-
-    let mut level_size = 1;
-    for step in 1..moves + 1 {
-        level_size = queue.len();
-        visited.clear();
-        for _ in 0..level_size {
-            let current = queue.pop_front().unwrap();
-
-            for dir in DIRS {
-                let next_pos = current + dir;
-                if !visited.contains(&next_pos)
-                    && board[next_pos.to_index_wrapped(board_dim)] == PLOT
-                {
-                    visited.insert(next_pos);
-                    queue.push_back(next_pos);
-                }
-            }
-        }
-
-        let min_repeat = if p2 { 2 } else { 3 };
-        if (step / board_dim.0) > min_repeat {
-            let mut count_per_board: HashMap<(isize, isize), usize> = HashMap::new();
-
-            visited.iter().for_each(|pos| {
-                let board_id = pos.board_id(board.dim());
-                *count_per_board.entry(board_id).or_insert(0) += 1;
-            });
-
-            let mut counts_per_count = HashMap::new();
-
-            count_per_board.values().for_each(|count| {
-                *counts_per_count.entry(count).or_insert(0) += 1;
-            });
-            if step % board_dim.0 == true_moves_cycle {
-                counts_per_count.iter().for_each(|(count, occ)| {
-                    counts_per_count_vec
-                        .entry(**count)
-                        .or_default()
-                        .push((*occ, step));
-                });
-            }
+        if record_steps.contains(&step) {
+            out.push(visited.len())
         }
     }
-
-    let res: HashMap<usize, usize> = counts_per_count_vec
-        .iter()
-        .map(|(count, v)| {
-            let deltas = v
-                .iter()
-                .tuple_windows()
-                .map(|((a, _), (b, _))| b - a)
-                .collect_vec();
-
-            (
-                *count,
-                compute_at_n((true_moves - v[0].1) / board_dim.0, &deltas, v[0].0),
-            )
-        })
-        .collect();
-
-    let total_visited: usize = res.iter().map(|(count, repeats)| count * repeats).sum();
-    total_visited
+    out
 }
 
 #[allow(dead_code)]
@@ -282,8 +197,7 @@ fn visualize(board: &Board, reached: &[Position]) {
 
 fn walled_board(board: &Board, starts: &[Position], steps: usize) -> usize {
     let mut board = pad(board, ROCK);
-    let mut visited = HashSet::new();
-    bfs(&mut board, starts, steps, &mut visited)
+    *bfs(&mut board, starts, &[steps]).first().unwrap()
 }
 
 fn part1(input: &str, steps: usize) -> usize {
@@ -304,7 +218,96 @@ fn part1(input: &str, steps: usize) -> usize {
     walled_board(&board, &[start], steps)
 }
 
-fn part2(input: &str, steps: usize, true_steps: usize, p2_map: bool) -> usize {
+struct StepIterator<T> {
+    initial: T,
+    step: T,
+}
+
+impl<T> StepIterator<T> {
+    fn new(start: T, step: T) -> Self {
+        StepIterator {
+            initial: start,
+            step,
+        }
+    }
+}
+
+impl<T> Iterator for StepIterator<T>
+where
+    T: std::ops::Add<Output = T> + Copy,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.initial;
+        self.initial = self.initial + self.step;
+        Some(result)
+    }
+}
+
+fn step_by<T>(start: T, step: T) -> StepIterator<T> {
+    StepIterator::new(start, step)
+}
+
+fn solve_quadratic(points: [(f64, f64); 3]) -> Option<(f64, f64, f64)> {
+    let (x1, y1) = points[0];
+    let (x2, y2) = points[1];
+    let (x3, y3) = points[2];
+
+    let matrix = [[x1 * x1, x1, 1.0], [x2 * x2, x2, 1.0], [x3 * x3, x3, 1.0]];
+    let mut y_values = [y1, y2, y3];
+
+    gauss_jordan(&matrix, &mut y_values).map(|coefs| (coefs[0], coefs[1], coefs[2]))
+}
+
+fn gauss_jordan(matrix: &[[f64; 3]; 3], y_values: &mut [f64; 3]) -> Option<[f64; 3]> {
+    let mut mat = *matrix;
+
+    // Forward elimination
+    for i in 0..3 {
+        if mat[i][i] == 0.0 {
+            return None;
+        }
+
+        for j in (i + 1)..3 {
+            let ratio = mat[j][i] / mat[i][i];
+            for k in 0..3 {
+                mat[j][k] -= ratio * mat[i][k];
+            }
+            y_values[j] -= ratio * y_values[i];
+        }
+    }
+
+    // Backward substitution
+    let mut solution = [0.0; 3];
+    for i in (0..3).rev() {
+        solution[i] = y_values[i];
+        for j in (i + 1)..3 {
+            solution[i] -= mat[i][j] * solution[j];
+        }
+        solution[i] /= mat[i][i];
+    }
+
+    Some(solution)
+}
+
+fn zip_to_three_point(vec1: Vec<usize>, vec2: Vec<usize>) -> Option<[(f64, f64); 3]> {
+    vec1.into_iter()
+        .zip(vec2)
+        .map(|(a, b)| (a as f64, b as f64))
+        .collect::<Vec<_>>() // Convert iterator to Vec
+        .try_into() // Try to convert Vec to array
+        .ok() // Convert Result to Option
+}
+
+fn cross_open(array: &Array2<char>, point: [usize; 2]) -> bool {
+    let horizontal_open = array.row(point[0]).iter().all(|&c| c != '#');
+    let vertical_open = array.column(point[1]).iter().all(|&c| c != '#');
+
+    horizontal_open && vertical_open
+}
+
+fn part2(input: &str, steps: usize) -> usize {
     let mut board = parse_board(input);
     let start = board
         .indexed_iter()
@@ -316,21 +319,29 @@ fn part2(input: &str, steps: usize, true_steps: usize, p2_map: bool) -> usize {
             }
         })
         .unwrap();
-    let mut visited = HashSet::new();
-    bfs_use_deltas(
-        &mut board,
-        &[start],
-        steps,
-        true_steps,
-        &mut visited,
-        p2_map,
-    )
+
+    // We're in the center of a square board, with free passages to the edges
+    assert!(board.is_square());
+    let board_side = board.dim().0;
+    assert_eq!(board_side % 2, 1); // Odd size -> has a single center
+    let center = Position::new((board_side / 2) as isize, (board_side / 2) as isize);
+    assert_eq!(center, start);
+    assert!(cross_open(&board, start.to_index())); // Free passage to the edges
+
+    // Three point method for solving a quadratic
+    let to_edge_steps = board_side - 1 - start.x as usize;
+    let sample_points = step_by(to_edge_steps, board_side).take(3).collect_vec();
+    let sample_points_reachable = bfs(&mut board, &[start], &sample_points);
+    let samples = zip_to_three_point(sample_points, sample_points_reachable).unwrap();
+    let out = solve_quadratic(samples).unwrap();
+
+    (out.0 * (steps as f64).powi(2) + out.1 * steps as f64 + out.2).round() as usize
 }
 
 pub fn main() -> std::io::Result<()> {
     let input = &read_input_to_string(21)?;
     dbg!(part1(input, 64));
-    dbg!(part2(input, 721, P2_STEPS, true));
+    dbg!(part2(input, P2_STEPS));
 
     Ok(())
 }
@@ -350,23 +361,23 @@ fn example() {
 ...........";
 
     assert_eq!(part1(input, 6), 16);
-    assert_eq!(part2(input, 100, 100, false), 6536);
-    assert_eq!(part2(input, 100, 500, false), 167004);
-    assert_eq!(part2(input, 100, 1000, false), 668697);
+    assert_eq!(part2(input, 100), 6536);
+    assert_eq!(part2(input, 500), 167004);
+    assert_eq!(part2(input, 1000), 668697);
 }
 
 #[test]
 fn task() {
     let input = &read_input_to_string(21).unwrap();
     assert_eq!(part1(input, 64), 3724);
-    assert_eq!(part2(input, 721, P2_STEPS, true), 620348631910321);
+    assert_eq!(part2(input, P2_STEPS), 620348631910321);
 }
 
 #[bench]
 fn task_bench(b: &mut Bencher) {
     b.iter(|| {
         let input = &read_input_to_string(21).unwrap();
-        // part1(input, 64);
-        // part2(input, 721, P2_STEPS, true);
+        part1(input, 64);
+        part2(input, P2_STEPS);
     })
 }
