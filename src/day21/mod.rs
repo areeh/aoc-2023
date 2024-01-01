@@ -1,7 +1,7 @@
 extern crate test;
 
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{VecDeque};
 use std::ops::{Add, AddAssign, Sub};
 
 use crate::day21::Direction::{Down, Left, Right, Up};
@@ -144,7 +144,6 @@ fn compute_at_n(n: usize, deltas: &[usize], start: usize) -> usize {
 
 fn bfs(board: &mut Array2<char>, starts: &[Position], record_steps: &[usize]) -> Vec<usize> {
     let board_dim = board.dim();
-    let mut visited = HashSet::new();
     let mut queue = VecDeque::new();
 
     let s_idx = board
@@ -158,27 +157,28 @@ fn bfs(board: &mut Array2<char>, starts: &[Position], record_steps: &[usize]) ->
     }
 
     let steps = record_steps.iter().max().unwrap();
+    let mut visited = Array2::from_elem((starts[0].y as usize + steps * 2 + 1, starts[0].x as usize + steps * 2 + 1), false);
 
     let mut out = vec![];
     let mut level_size;
     for step in 1..steps + 1 {
         level_size = queue.len();
-        visited.clear();
+        visited.fill(false);
         for _ in 0..level_size {
             let current = queue.pop_front().unwrap();
 
             for dir in DIRS {
                 let next_pos = current + dir;
-                if !visited.contains(&next_pos)
+                if !visited[((next_pos.y + *steps as isize) as usize, (next_pos.x + *steps as isize) as usize)]
                     && board[next_pos.to_index_wrapped(board_dim)] == PLOT
                 {
-                    visited.insert(next_pos);
+                    visited[((next_pos.y + *steps as isize) as usize, (next_pos.x + *steps as isize) as usize)] = true;
                     queue.push_back(next_pos);
                 }
             }
         }
         if record_steps.contains(&step) {
-            out.push(visited.len())
+            out.push(visited.iter().filter(|v| **v).count())
         }
     }
     out
