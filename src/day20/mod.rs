@@ -317,20 +317,19 @@ fn parts(input: &str, part2: bool) -> usize {
                 pulse_neg += 1;
             }
 
-            let m = &mut modules
-                .get_mut(&dest)
-                .unwrap_or_else(|| panic!("Did not find module {dest}"));
-            if let Some(pulse) = m.process(&source, pulse, &mut iter_map, i + 1) {
-                for new_dest in m.destinations() {
-                    queue.push_back((dest.to_string(), new_dest.to_string(), pulse))
+            if let Some(m) = &mut modules.get_mut(&dest) {
+                if let Some(pulse) = m.process(&source, pulse, &mut iter_map, i + 1) {
+                    for new_dest in m.destinations() {
+                        queue.push_back((dest.to_string(), new_dest.to_string(), pulse))
+                    }
                 }
             }
         }
     }
 
     let deltas = iter_map
-        .into_iter()
-        .map(|(label, values)| {
+        .into_values()
+        .map(|values| {
             once(0)
                 .chain(values)
                 .tuple_windows()
@@ -364,35 +363,29 @@ pub fn main() -> std::io::Result<()> {
 
 #[test]
 fn test_module_parse() {
-    // Test parsing a valid FlipFlop module
     let flipflop_str = "%a -> b, c";
     match flipflop_str.parse::<Module>() {
         Ok(Module::F(flipflop)) => assert_eq!(flipflop.destinations, vec!["b", "c"]),
         _ => panic!("Failed to parse FlipFlop module"),
     }
 
-    // Test parsing a valid Conjunction module
     let conjunction_str = "&x -> y, z";
     match conjunction_str.parse::<Module>() {
         Ok(Module::C(conjunction)) => assert_eq!(conjunction.destinations, vec!["y", "z"]),
         _ => panic!("Failed to parse Conjunction module"),
     }
 
-    // Test parsing a valid Broadcaster module
     let broadcaster_str = "broadcaster -> a, b, c";
     match broadcaster_str.parse::<Module>() {
         Ok(Module::B(broadcaster)) => assert_eq!(broadcaster.destinations, vec!["a", "b", "c"]),
         _ => panic!("Failed to parse Broadcaster module"),
     }
 
-    // Test parsing with an invalid format
     let invalid_str = "invalid format";
     assert!(matches!(
         invalid_str.parse::<Module>(),
         Err(ParseModuleError::InvalidFormat(_))
     ));
-
-    // More test cases can be added here
 }
 
 #[test]

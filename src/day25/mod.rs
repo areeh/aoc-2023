@@ -62,7 +62,7 @@ fn build_graph(
         }
     }
 
-    println!("{:?}", Dot::with_config(&g, &[Config::EdgeNoLabel]));
+    // println!("{:?}", Dot::with_config(&g, &[Config::EdgeNoLabel]));
 
     (g, component_map)
 }

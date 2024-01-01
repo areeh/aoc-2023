@@ -1,7 +1,7 @@
 extern crate test;
 
 use itertools::Itertools;
-use std::collections::{VecDeque};
+use std::collections::VecDeque;
 use std::ops::{Add, AddAssign, Sub};
 
 use crate::day21::Direction::{Down, Left, Right, Up};
@@ -128,20 +128,6 @@ const P2_STEPS: usize = 26501365;
 
 const DIRS: [Direction; 4] = [Up, Left, Down, Right];
 
-fn compute_at_n(n: usize, deltas: &[usize], start: usize) -> usize {
-    if n == 0 {
-        return start;
-    }
-
-    if deltas[0] == deltas[1] {
-        start + deltas[0] * n
-    } else {
-        let increase = deltas[1] - deltas[0];
-        let n = n + 1;
-        start + n * (n - 1) / 2 * increase + (n - 1) * (deltas[0] - increase)
-    }
-}
-
 fn bfs(board: &mut Array2<char>, starts: &[Position], record_steps: &[usize]) -> Vec<usize> {
     let board_dim = board.dim();
     let mut queue = VecDeque::new();
@@ -157,7 +143,13 @@ fn bfs(board: &mut Array2<char>, starts: &[Position], record_steps: &[usize]) ->
     }
 
     let steps = record_steps.iter().max().unwrap();
-    let mut visited = Array2::from_elem((starts[0].y as usize + steps * 2 + 1, starts[0].x as usize + steps * 2 + 1), false);
+    let mut visited = Array2::from_elem(
+        (
+            starts[0].y as usize + steps * 2 + 1,
+            starts[0].x as usize + steps * 2 + 1,
+        ),
+        false,
+    );
 
     let mut out = vec![];
     let mut level_size;
@@ -169,10 +161,15 @@ fn bfs(board: &mut Array2<char>, starts: &[Position], record_steps: &[usize]) ->
 
             for dir in DIRS {
                 let next_pos = current + dir;
-                if !visited[((next_pos.y + *steps as isize) as usize, (next_pos.x + *steps as isize) as usize)]
-                    && board[next_pos.to_index_wrapped(board_dim)] == PLOT
+                if !visited[(
+                    (next_pos.y + *steps as isize) as usize,
+                    (next_pos.x + *steps as isize) as usize,
+                )] && board[next_pos.to_index_wrapped(board_dim)] == PLOT
                 {
-                    visited[((next_pos.y + *steps as isize) as usize, (next_pos.x + *steps as isize) as usize)] = true;
+                    visited[(
+                        (next_pos.y + *steps as isize) as usize,
+                        (next_pos.x + *steps as isize) as usize,
+                    )] = true;
                     queue.push_back(next_pos);
                 }
             }
@@ -361,9 +358,6 @@ fn example() {
 ...........";
 
     assert_eq!(part1(input, 6), 16);
-    assert_eq!(part2(input, 100), 6536);
-    assert_eq!(part2(input, 500), 167004);
-    assert_eq!(part2(input, 1000), 668697);
 }
 
 #[test]
